@@ -1,11 +1,13 @@
 from fastapi import FastAPI
 from app.routers import tasks
+from app.routers import auth
 from app.services.prisma import db
 
 app = FastAPI()
 
 app.include_router(tasks.router)
 
+app.include_router(auth.router)
 
 @app.on_event("startup")
 async def startup():

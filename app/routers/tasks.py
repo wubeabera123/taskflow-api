@@ -1,18 +1,24 @@
 from fastapi import APIRouter, HTTPException
 from app.schemas.task import TaskCreate
 from app.services.prisma import db
+from fastapi import Depends
+from app.core.dependencies import get_current_user
+
 
 router = APIRouter()
 
 
 # CREATE TASK
 @router.post("/tasks")
-async def create_task(task: TaskCreate):
+async def create_task(
+    task: TaskCreate,
+    current_user=Depends(get_current_user)
+):
     new_task = await db.task.create(
         data={
             "title": task.title,
             "description": task.description,
-            "userId": 1   # temporary until auth phase
+            "userId": current_user.id
         }
     )
     return new_task
@@ -20,9 +26,10 @@ async def create_task(task: TaskCreate):
 
 # GET ALL
 @router.get("/tasks")
-async def get_tasks():
-    return await db.task.find_many()
-
+async def get_tasks(current_user = Depends(get_current_user)):
+    return await db.task.find_many(
+        where={"userId": current_user.id}
+    )
 
 # GET ONE
 @router.get("/tasks/{task_id}")
