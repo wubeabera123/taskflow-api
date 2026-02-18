@@ -1,12 +1,19 @@
 from fastapi import FastAPI
 from app.routers import tasks
-
+from app.routers import auth
+from app.services.prisma import db
 
 app = FastAPI()
-app = FastAPI(title="TaskFlow API")
 
 app.include_router(tasks.router)
 
-@app.get("/")
-def home():
-    return {"message": "TaskFlow API is running"}
+app.include_router(auth.router)
+
+@app.on_event("startup")
+async def startup():
+    await db.connect()
+
+
+@app.on_event("shutdown")
+async def shutdown():
+    await db.disconnect()
