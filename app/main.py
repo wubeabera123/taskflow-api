@@ -2,6 +2,8 @@ from fastapi import FastAPI
 from app.routers import tasks
 from app.routers import auth
 from app.services.prisma import db
+from dotenv import load_dotenv
+load_dotenv()  # Load environment variables from .env file
 
 app = FastAPI()
 
