@@ -26,11 +26,29 @@ async def create_task(
 # GET ALL
 
 
-@router.get("/tasks")
-async def get_tasks(current_user=Depends(get_current_user)):
-    return await db.task.find_many(
+@router.get("/")
+async def get_tasks(
+    skip: int = 0,
+    limit: int = 10,
+    current_user=Depends(get_current_user)
+):
+    total = await db.task.count(
         where={"userId": current_user.id}
     )
+
+    tasks = await db.task.find_many(
+        where={"userId": current_user.id},
+        skip=skip,
+        take=limit,
+        order={"createdAt": "desc"}
+    )
+
+    return {
+        "total": total,
+        "skip": skip,
+        "limit": limit,
+        "items": tasks
+    }
 
 # GET ONE
 
