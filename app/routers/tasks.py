@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 from app.schemas.task import TaskCreate
 from app.services.prisma import db
 from fastapi import Depends
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, require_role
 from fastapi import HTTPException
 
 
@@ -104,3 +104,9 @@ async def delete_task(
     await db.task.delete(where={"id": task_id})
 
     return {"message": "Task deleted successfully"}
+
+@router.get("/admin/all")
+async def get_all_tasks(
+    current_user=Depends(require_role("admin"))
+):
+    return await db.task.find_many()
