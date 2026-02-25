@@ -1,21 +1,22 @@
 from fastapi import FastAPI
-from app.routers import tasks
-from app.routers import auth
-from app.services.prisma import db
 from dotenv import load_dotenv
-load_dotenv()  # Load environment variables from .env file
+from app.routers import tasks, auth
+from app.core.database import engine, Base
+
+load_dotenv()
 
 app = FastAPI()
 
 app.include_router(tasks.router)
-
 app.include_router(auth.router)
 
+
 @app.on_event("startup")
-async def startup():
-    await db.connect()
+async def on_startup():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
 
 @app.on_event("shutdown")
-async def shutdown():
-    await db.disconnect()
+async def on_shutdown():
+    await engine.dispose()

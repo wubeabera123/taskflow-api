@@ -3,4 +3,8 @@ uvicorn
 python-jose
 passlib[bcrypt]
 python-multipart
-pydantic
+pydantic[email]
+sqlalchemy
+asyncpg
+psycopg2-binary
+python-dotenv
