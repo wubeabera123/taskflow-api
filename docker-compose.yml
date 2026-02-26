@@ -1,16 +1,31 @@
 version: "3.9"
 
 services:
+  db:
+    image: postgres:15
+    container_name: taskflow_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: taskflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
   api:
     build: .
     container_name: taskflow_api
     restart: always
+    depends_on:
+      - db
     environment:
-      DATABASE_URL: postgresql://neondb_owner:I40ihKpRXrng@ep-damp-frost-a20kvwbz-pooler.eu-central-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
-      SECRET_KEY: 1d766e21352385d5b32655eeaceab63a6b5b781ea788033f99c85fcc4199aca5
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/taskflow
     ports:
       - "8000:8000"
-    command: >
-      sh -c "
-      uvicorn app.main:app --host 0.0.0.0 --port 8000
-      "
+    volumes:
+      - .:/app
+
+volumes:
+  postgres_data:

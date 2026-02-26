@@ -4,8 +4,7 @@ from sqlalchemy import select, func
 
 from app.schemas.task import TaskCreate
 from app.models.task import Task
-from app.dependencies import get_db
-from app.core.dependencies import get_current_user, require_role
+from app.core.dependencies import get_db, get_current_user, require_role
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
 
@@ -20,8 +19,7 @@ async def create_task(
 
     new_task = Task(
         title=task.title,
-        description=task.description,
-        user_id=current_user.id
+        owner_id=current_user.id  # ✅ fixed
     )
 
     db.add(new_task)
@@ -31,7 +29,7 @@ async def create_task(
     return new_task
 
 
-# GET ALL (with pagination)
+# GET ALL
 @router.get("/")
 async def get_tasks(
     skip: int = 0,
@@ -41,14 +39,13 @@ async def get_tasks(
 ):
 
     total_result = await db.execute(
-        select(func.count()).where(Task.user_id == current_user.id)
+        select(func.count()).where(Task.owner_id == current_user.id)  # ✅ fixed
     )
     total = total_result.scalar()
 
     result = await db.execute(
         select(Task)
-        .where(Task.user_id == current_user.id)
-        .order_by(Task.created_at.desc())
+        .where(Task.owner_id == current_user.id)  # ✅ fixed
         .offset(skip)
         .limit(limit)
     )
@@ -77,7 +74,7 @@ async def get_task(
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
-    if task.user_id != current_user.id:
+    if task.owner_id != current_user.id:  # ✅ fixed
         raise HTTPException(status_code=403, detail="Not authorized")
 
     return task
@@ -98,11 +95,10 @@ async def update_task(
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
-    if task.user_id != current_user.id:
+    if task.owner_id != current_user.id:  # ✅ fixed
         raise HTTPException(status_code=403, detail="Not authorized")
 
-    task.title = task_data.title
-    task.description = task_data.description
+    task.title = task_data.title  # ✅ removed description
 
     await db.commit()
     await db.refresh(task)
@@ -124,7 +120,7 @@ async def delete_task(
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
-    if task.user_id != current_user.id:
+    if task.owner_id != current_user.id:  # ✅ fixed
         raise HTTPException(status_code=403, detail="Not authorized")
 
     await db.delete(task)

@@ -4,13 +4,24 @@ from jose import JWTError, jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from app.core.dependencies import get_db
+from app.core.database import AsyncSessionLocal
 from app.models.user import User
 from app.core.security import SECRET_KEY, ALGORITHM
 
 security = HTTPBearer()
 
 
+# -----------------------
+# DATABASE DEPENDENCY
+# -----------------------
+async def get_db() -> AsyncSession:
+    async with AsyncSessionLocal() as session:
+        yield session
+
+
+# -----------------------
+# AUTH: GET CURRENT USER
+# -----------------------
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: AsyncSession = Depends(get_db)
@@ -33,9 +44,13 @@ async def get_current_user(
     return user
 
 
+# -----------------------
+# ROLE CHECKER
+# -----------------------
 def require_role(required_role: str):
-    async def role_checker(current_user=Depends(get_current_user)):
+    async def role_checker(current_user: User = Depends(get_current_user)):
         if current_user.role != required_role:
             raise HTTPException(status_code=403, detail="Insufficient permissions")
         return current_user
+
     return role_checker
