@@ -6,5 +6,4 @@ python-multipart
 pydantic[email]
 sqlalchemy
 asyncpg
-psycopg2-binary
 python-dotenv
