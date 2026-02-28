@@ -5,6 +5,8 @@ services:
     image: postgres:15
     container_name: taskflow_db
     restart: always
+    profiles:
+      - local  # Only starts with local profile
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -13,19 +15,27 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   api:
     build: .
     container_name: taskflow_api
     restart: always
-    depends_on:
-      - db
+    # Remove depends_on for local db when using Neon
     environment:
-      DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/taskflow
+      # Default to local DB
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://postgres:postgres@db:5432/taskflow}
     ports:
       - "8000:8000"
     volumes:
       - .:/app
+    # Load env file for Neon credentials
+    env_file:
+      - .env
 
 volumes:
   postgres_data:
