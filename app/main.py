@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from dotenv import load_dotenv
-from app.routers import tasks, auth
+from app.routers import tasks, auth, ai
 from app.core.database import engine, Base
 
 load_dotenv()
@@ -9,6 +9,8 @@ app = FastAPI()
 
 app.include_router(tasks.router)
 app.include_router(auth.router)
+app.include_router(ai.router)
+
 
 
 # @app.on_event("startup")
