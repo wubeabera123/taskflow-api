@@ -16,14 +16,25 @@ async def generate_tasks_from_prompt(prompt: str):
     """
 
     payload = {
-        "model": "gemma3:4b",  # since your UI shows this installed
+        "model": "gemma:2b",
         "prompt": system_prompt + "\nUser request:\n" + prompt,
         "stream": False
     }
 
-    async with httpx.AsyncClient() as client:
-        response = await client.post(OLLAMA_URL, json=payload)
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            response = await client.post(OLLAMA_URL, json=payload)
 
-    result = response.json()
+        response.raise_for_status()
 
-    return result["response"]
+        result = response.json()
+
+        print("OLLAMA RAW RESPONSE:", result)
+
+        if "response" not in result:
+            raise Exception(f"Unexpected Ollama response: {result}")
+
+        return result["response"]
+
+    except Exception as e:
+        raise Exception(f"AI service error: {str(e)}")
