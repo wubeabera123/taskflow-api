@@ -6,50 +6,26 @@ from app.models.task import Task
 from app.models.user import User
 from app.services.ai_service import generate_tasks_from_prompt
 from app.schemas.ai import AITaskRequest
-import json
-import re
+from app.schemas.task import TaskResponse
 
 router = APIRouter(prefix="/ai", tags=["AI"])
 
 
-@router.post("/generate-tasks")
+@router.post("/generate-tasks", response_model=list[TaskResponse])
 async def generate_tasks(
     request: AITaskRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     try:
-        # 🔹 Call Ollama
-        ai_response = await generate_tasks_from_prompt(request.prompt)
+        # 🔹 Call AI service (already returns parsed tasks)
+        tasks_data = await generate_tasks_from_prompt(request.prompt)
 
-        if not ai_response:
+        if not tasks_data:
             raise HTTPException(
                 status_code=500,
-                detail="AI returned empty response."
+                detail="AI returned empty task list."
             )
-
-        # 🔹 Clean markdown formatting (```json ... ```)
-        cleaned_response = ai_response.strip()
-        cleaned_response = re.sub(r"```json|```", "", cleaned_response).strip()
-
-        # 🔹 Parse JSON
-        tasks_data = json.loads(cleaned_response)
-
-        # 🔹 Normalize response (handle single object case)
-        if isinstance(tasks_data, dict):
-            tasks_data = [tasks_data]
-
-        if not isinstance(tasks_data, list):
-            raise HTTPException(
-                status_code=500,
-                detail="AI did not return a valid task list."
-            )
-
-    except json.JSONDecodeError:
-        raise HTTPException(
-            status_code=500,
-            detail="AI returned invalid JSON format."
-        )
 
     except Exception as e:
         raise HTTPException(
@@ -59,20 +35,25 @@ async def generate_tasks(
 
     created_tasks = []
 
-    # 🔹 Save tasks to DB
+    # 🔹 Save tasks in database
     for task in tasks_data:
         new_task = Task(
             title=task.get("title"),
             description=task.get("description"),
             priority=task.get("priority"),
+            is_ai_generated=True,
+            ai_prompt=request.prompt,   # ✅ save prompt
             owner_id=current_user.id
         )
+
         db.add(new_task)
         created_tasks.append(new_task)
 
     await db.commit()
 
-    return {
-        "message": "Tasks generated successfully",
-        "tasks_created": len(created_tasks)
-    }
+    # 🔹 Refresh to get IDs
+    for task in created_tasks:
+        await db.refresh(task)
+
+    # 🔹 Return created tasks
+    return created_tasks
