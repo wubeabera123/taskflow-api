@@ -7,6 +7,13 @@ from app.models.user import User
 from app.services.ai_service import generate_tasks_from_prompt
 from app.schemas.ai import AITaskRequest
 from app.schemas.task import TaskResponse
+from app.schemas.ai_breakdown import AIBreakdownRequest, AIBreakdownResponse
+from app.services.ai_service import generate_task_breakdown
+from app.schemas.ai_priority import (
+    AIPriorityRequest,
+    AIPriorityResponse,
+)
+from app.services.ai_service import prioritize_tasks
 
 router = APIRouter(prefix="/ai", tags=["AI"])
 
@@ -100,3 +107,55 @@ async def suggest_tasks(
         )
 
     return suggested_tasks
+
+@router.post("/breakdown-task", response_model=AIBreakdownResponse)
+async def breakdown_task(
+    request: AIBreakdownRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Break a large task into smaller subtasks using AI.
+    """
+
+    try:
+        subtasks = await generate_task_breakdown(request.task)
+
+        if not subtasks:
+            raise HTTPException(
+                status_code=500,
+                detail="AI returned empty subtask list."
+            )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"AI service error: {str(e)}"
+        )
+
+    return {"subtasks": subtasks}
+
+@router.post("/prioritize-tasks", response_model=AIPriorityResponse)
+async def prioritize_tasks_endpoint(
+    request: AIPriorityRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    AI assigns priority to tasks.
+    """
+
+    try:
+        prioritized = await prioritize_tasks(request.tasks)
+
+        if not prioritized:
+            raise HTTPException(
+                status_code=500,
+                detail="AI returned empty priority list"
+            )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
+
+    return {"tasks": prioritized}
