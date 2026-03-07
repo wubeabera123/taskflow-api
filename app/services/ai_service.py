@@ -63,6 +63,12 @@ Rules:
         if isinstance(tasks, dict):
             tasks = [tasks]
 
+        if not isinstance(tasks, list):
+            raise Exception("AI did not return a valid task list")
+
+        # ✅ LIMIT AI OUTPUT (important for safety)
+        tasks = tasks[:5]
+
         return tasks
 
     except json.JSONDecodeError:
