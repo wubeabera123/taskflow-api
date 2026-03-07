@@ -14,6 +14,12 @@ from app.schemas.ai_priority import (
     AIPriorityResponse,
 )
 from app.services.ai_service import prioritize_tasks
+from app.schemas.ai_schedule import (
+    AIScheduleRequest,
+    AIScheduleResponse,
+)
+
+from app.services.ai_service import schedule_task
 
 router = APIRouter(prefix="/ai", tags=["AI"])
 
@@ -159,3 +165,29 @@ async def prioritize_tasks_endpoint(
         )
 
     return {"tasks": prioritized}
+
+@router.post("/schedule-task", response_model=AIScheduleResponse)
+async def schedule_task_endpoint(
+    request: AIScheduleRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    AI schedules steps for completing a task before a deadline.
+    """
+
+    try:
+        schedule = await schedule_task(request.task, request.deadline)
+
+        if not schedule:
+            raise HTTPException(
+                status_code=500,
+                detail="AI returned empty schedule"
+            )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
+
+    return {"schedule": schedule}

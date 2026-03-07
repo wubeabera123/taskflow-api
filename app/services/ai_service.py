@@ -234,3 +234,64 @@ Rules:
 
     except Exception as e:
         raise Exception(f"AI service error: {str(e)}")
+    
+async def schedule_task(task: str, deadline: str):
+    """
+    Use AI to create a schedule for completing a task before the deadline.
+    """
+
+    system_prompt = """
+You are a productivity assistant.
+
+Break the task into steps and assign a realistic time to complete each step before the deadline.
+
+Return ONLY valid JSON in this format:
+
+{
+  "schedule": [
+    {"step": "Step name", "time": "suggested time"},
+    {"step": "Step name", "time": "suggested time"}
+  ]
+}
+
+Rules:
+- Maximum 6 steps
+- Each step must be clear
+- Use simple time expressions like "today 4pm" or "tomorrow 9am"
+- Do NOT include explanations
+- Do NOT include markdown
+- Only return JSON
+"""
+
+    payload = {
+        "model": "gemma:2b",
+        "prompt": f"{system_prompt}\nTask: {task}\nDeadline: {deadline}",
+        "stream": False,
+        "format": "json"
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            response = await client.post(OLLAMA_URL, json=payload)
+
+        response.raise_for_status()
+        result = response.json()
+
+        if "response" not in result:
+            raise Exception(f"Unexpected Ollama response: {result}")
+
+        ai_text = result["response"]
+
+        # Clean markdown if present
+        ai_text = re.sub(r"```json", "", ai_text)
+        ai_text = re.sub(r"```", "", ai_text).strip()
+
+        parsed = json.loads(ai_text)
+
+        if isinstance(parsed, dict) and "schedule" in parsed:
+            return parsed["schedule"]
+
+        raise Exception("Invalid AI scheduling response")
+
+    except Exception as e:
+        raise Exception(f"AI service error: {str(e)}")
